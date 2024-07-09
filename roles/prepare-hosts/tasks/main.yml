@@ -1,0 +1,117 @@
+- name: Put SELinux in permissive mode, logging actions that would be blocked
+  ansible.posix.selinux:
+    policy: targeted
+    state: permissive
+
+    
+- name: Disable firewalld
+  service:
+    name: firewalld
+    state: stopped
+    enabled: no
+
+- name: check status swap
+  shell: swapon
+  register: swap_status
+  changed_when: false
+
+      
+- name: Disable SWAP
+  shell: swapoff -a
+  when: swap_status.stdout != ""
+
+- name: Disable SWAP in fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
+    replace: '#\1\2\3swap\4'
+
+- name: Load module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: Load module permanent
+  copy:
+    src: modules-kubernetes.conf
+    dest: /etc/modules-load.d/modules-kubernetes.conf
+
+
+- name: add kubernetes to repo
+  yum_repository: 
+    name: Kubernetes
+    description: adding kubernetes to repo
+    baseurl: https://pkgs.k8s.io/core:/stable:/{{ version }}/rpm/
+    enabled: yes
+    gpgcheck: yes
+    gpgkey: https://pkgs.k8s.io/core:/stable:/{{ version }}/rpm/repodata/repomd.xml.key
+  when: ansible_os_family == "RedHat"
+
+- name: Docker repository for containerd
+  yum_repository:
+    name: docker
+    enabled: yes
+    baseurl: "{{ docker_yum_repo_url }}"
+    description: 'Docker'
+    gpgcheck: yes
+    gpgkey: 'https://download.docker.com/linux/centos/gpg'
+  when: ansible_os_family == "RedHat"  
+
+
+  
+- name: check services
+  service_facts:    
+
+
+- name: Uninstall old versions
+  dnf:
+    name:
+      - docker-engine
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: absent 
+  when: ansible_facts.services['containerd.service']['state'] != 'running'
+
+- name: install the needed packages
+  dnf: 
+    name: 
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - kubectl 
+      - kubelet
+      - kubeadm
+  notify: Start and enable containerd
+
+- name: enable the kubelet
+  shell: sudo systemctl enable --now kubelet
+
+- name: Remove containerd config.toml 
+  when: ansible_os_family == "RedHat"
+  file:
+    path: /etc/containerd/config.toml
+    state: absent 
+
+- name: Set crictl.yaml
+  copy: 
+    src: crictl.yaml
+    dest: /etc/crictl.yaml
+    owner: root
+    mode: 644
+
+- name: create empty k8s.conf
+  copy:
+    content: ""
+    dest: /etc/sysctl.d/k8s.conf
+    force: no
+
+- name: set sysctl params
+  ansible.posix.sysctl:
+    sysctl_file: /etc/sysctl.d/k8s.conf
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop: "{{ k8s_nodes_sysctls }}"
+

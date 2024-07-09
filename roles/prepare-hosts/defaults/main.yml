@@ -1,0 +1,3 @@
+version: v1.30
+
+docker_yum_repo_url: "https://download.docker.com/linux/centos/$releasever/$basearch/stable"

@@ -1,0 +1,6 @@
+---
+- name: Start and enable containerd
+  service: 
+    name: containerd
+    state: started
+    enabled: yes
