@@ -71,7 +71,7 @@
       - docker-ce-cli
       - containerd.io
     state: absent 
-  when: ansible_facts.services['containerd.service']['state'] != 'running'
+  when: ansible_facts.services['containerd.service']['state'] == 'running'
 
 - name: install the needed packages
   dnf: 
