@@ -1,7 +1,7 @@
 control:
   hosts:
     control.tymchenko.lan:
-      ansible_host: 192.168.1.104
+      ansible_host: 192.168.1.103
 
 
 workers:
@@ -9,7 +9,7 @@ workers:
     worker1.tymchenko.lan:
       ansible_host: 192.168.1.116
     worker2.tymchenko.lan:
-      ansible_host: 192.168.1.110 
+      ansible_host: 192.168.1.111 
 
 
 all_cluster:

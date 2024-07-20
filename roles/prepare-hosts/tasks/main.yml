@@ -93,6 +93,16 @@
     path: /etc/containerd/config.toml
     state: absent 
 
+- name: configure config.toml
+  shell: containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
+
+- name: Replace all occurrences of SystemdCgroup = false with SystemdCgroup = true
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^(.*SystemdCgroup\s*=\s*)false'
+    line: '\1true'
+    backrefs: yes
+
 - name: Set crictl.yaml
   copy: 
     src: crictl.yaml
